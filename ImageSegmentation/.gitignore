@@ -55,4 +55,3 @@ local.properties
 *.tdo
 /bin
 *.csv
-*.pyc
