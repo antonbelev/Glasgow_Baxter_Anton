@@ -30,7 +30,7 @@ while True:
     
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 10000:
+        if area < 2000 and area > 4000:
             continue
     
         if len(cnt) < 5:
