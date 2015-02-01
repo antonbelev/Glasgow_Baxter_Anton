@@ -6,24 +6,24 @@
 mtype = {img, string, integer, protocol, negotiate, subscriber, publisher}
 
 typedef sub{
-	int pid;
-	int tid; //index of the topic array on which the node(pid) is subscribed to
-}
+	int nodeid;
+	int tid
+};
 
 typedef pub{
-	int pid;
-	int tid; //index of the topic array on which the node(pid) is publishing to
-}
+	int nodeid;
+	int tid
+};
 
 typedef pub_table{
 	pub table[TABLE_SIZE];
-	int last;
-}
+	int last
+};
 
 typedef sub_table{
 	sub table[TABLE_SIZE];
-	int last;
-}
+	int last
+};
 
 chan topics[TABLE_SIZE] = [TOPIC_BANDWIDTH] of {mtype}
 
@@ -39,21 +39,19 @@ chan register = [NODE_BANDWIDTH] of {int, int, mtype, mtype}
 pub_table pt;
 sub_table st;
 
-
 proctype master_node(){
-	
+	int node_id;
+	int topic_id;
+	mtype msg_type;
+	mtype node_type;
+
 	work:
 		do
 		:: nempty(register) -> goto register_node;
-		:: else -> skip;
+		:: 1 -> skip;
 		od
 
 	register_node:
-		int node_id;
-		int topic_id;
-		mtype msg_type;
-		mtype node_type;
-
 		//add node to pub/sub table. If node is a publisher, check sub table and notify subscribers on that topic for new publisher
 		atomic{
 			register?node_id,topic_id,msg_type,node_type;
@@ -61,37 +59,27 @@ proctype master_node(){
 			if
 			:: node_type == publisher -> 
 					pub p;
-					p.pid = node_id;
+					p.nodeid = node_id;
 					p.tid = topic_id;
 					pt.last = pt.last + 1; 
 					pt.table[pt.last] = p;
 					goto notify_sub;
-			:: node_type == subscriber ->
+			:: node_type == subscriber -> 
 					sub s;
-					s.pid = node_id;
+					s.nodeid = node_id;
 					s.tid = topic_id;
 					st.last = st.last + 1; 
 					st.table[st.last] = s;
-					goto notify_pub
 			fi
 		}
 	notify_sub:
 		//notify subscribers for new publisher
 		atomic{
 			for (i : TABLE_SIZE) {
-				(pt[i].pid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
+				(pt.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
 			}
 			goto work;
 		}
-	notify_pub:
-		//notify publishers for new subscribers
-		atomic{
-			for (i : TABLE_SIZE) {
-				(st[i].pid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
-			}
-			goto work;
-		}
-
 }
 
 proctype camera_node(){
@@ -110,7 +98,7 @@ proctype camera_node(){
 		do
 		:: nempty(negotiatechan[node_id]) -> goto negotiate_connection;
 		:: start_publishing == 1 -> topics[topic_id]!img;
-		:: else -> skip;
+		:: 1 -> skip;
 		od	
 	
 	negotiate_connection:
@@ -138,7 +126,7 @@ proctype image_segmentation_node(){
 		do
 		:: nempty(nodechan[_pid]) -> goto get_notification;
 		:: nempty(topics[topic_id]) -> topics[topic_id]?msg; goto do_computation;
-		:: else -> skip;
+		:: 1 -> skip;
 		od
 
 	get_notification:
