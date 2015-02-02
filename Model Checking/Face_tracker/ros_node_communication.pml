@@ -34,7 +34,7 @@ chan protocolchan[MAX_NODES] = [NODE_BANDWIDTH] of {mtype}; //used to send negot
 
 //{1, 3, img, publisher} - node 1, which wants to publish messages of type {img} on topic with index 3. 
 //The Master has a well-known XMLRPC URI that is accessible to all nodes.
-chan register = [NODE_BANDWIDTH] of {int, int, mtype, mtype}
+chan reg_with_master = [NODE_BANDWIDTH] of {int, int, mtype, mtype}
 
 pub_table pt;
 sub_table st;
@@ -47,35 +47,32 @@ proctype master_node(){
 
 	work:
 		do
-		:: nempty(register) -> goto register_node;
+		:: nempty(reg_with_master) -> goto register_node;
 		:: 1 -> skip;
 		od
 
 	register_node:
 		//add node to pub/sub table. If node is a publisher, check sub table and notify subscribers on that topic for new publisher
 		atomic{
-			register?node_id,topic_id,msg_type,node_type;
+			reg_with_master?node_id,topic_id,msg_type,node_type;
 			//add node to table
 			if
 			:: node_type == publisher -> 
-					pub p;
-					p.nodeid = node_id;
-					p.tid = topic_id;
 					pt.last = pt.last + 1; 
-					pt.table[pt.last] = p;
+					pt.table[pt.last].nodeid = node_id;
+					pt.table[pt.last].tid = topic_id;
 					goto notify_sub;
 			:: node_type == subscriber -> 
-					sub s;
-					s.nodeid = node_id;
-					s.tid = topic_id;
 					st.last = st.last + 1; 
-					st.table[st.last] = s;
+					st.table[st.last].nodeid = node_id;
+					st.table[st.last].tid = topic_id;
 			fi
 		}
 	notify_sub:
 		//notify subscribers for new publisher
 		atomic{
-			for (i : TABLE_SIZE) {
+			int i;
+			for (i : 0 .. TABLE_SIZE) {
 				(pt.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
 			}
 			goto work;
@@ -92,7 +89,7 @@ proctype camera_node(){
 	bit start_publishing = 0;
 
 	register_with_master:
-		register!node_id,topic_id,msg_type,node_type;
+		reg_with_master!node_id,topic_id,msg_type,node_type;
 
 	work_camera_node:
 		do
@@ -120,7 +117,7 @@ proctype image_segmentation_node(){
 	mtype msg;
 
 	register_with_master:
-		register!node_id,topic_id,msg_type,node_type;
+		reg_with_master!node_id,topic_id,msg_type,node_type;
 
 	work_segmentation_node:
 		do
@@ -149,10 +146,6 @@ proctype image_segmentation_node(){
 }
 
 init{
-	pt.table = pub[TABLE_SIZE];
-	pt.last = 0;
-	st.table = sub[TABLE_SIZE];
-	st.last = 0;
 	run master_node();
 	run image_segmentation_node();
 	run camera_node();
