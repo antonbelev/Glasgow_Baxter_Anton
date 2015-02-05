@@ -1,7 +1,7 @@
 #define	TABLE_SIZE 10
 #define TOPIC_BANDWIDTH 1
 #define NODE_BANDWIDTH 1
-#define MAX_NODES 3
+#define MAX_NODES 10
 
 mtype = {img, string, integer, protocol, negotiate, subscriber, publisher}
 
@@ -40,6 +40,7 @@ pub_table pt;
 sub_table st;
 
 proctype master_node(){
+	printf("\n masterid %d \n", _pid);
 	int node_id;
 	int topic_id;
 	mtype msg_type;
@@ -48,7 +49,6 @@ proctype master_node(){
 	work:
 		do
 		:: nempty(reg_with_master) -> goto register_node;
-		:: 1 -> skip;
 		od
 
 	register_node:
@@ -58,28 +58,35 @@ proctype master_node(){
 			//add node to table
 			if
 			:: node_type == publisher -> 
-					pt.last = pt.last + 1; 
 					pt.table[pt.last].nodeid = node_id;
 					pt.table[pt.last].tid = topic_id;
+					pt.last = pt.last + 1;
 					goto notify_sub;
-			:: node_type == subscriber -> 
-					st.last = st.last + 1; 
+			:: node_type == subscriber -> 			
 					st.table[st.last].nodeid = node_id;
 					st.table[st.last].tid = topic_id;
+					st.last = st.last + 1; 
+					goto work;
 			fi
 		}
 	notify_sub:
 		//notify subscribers for new publisher
 		atomic{
-			int i;
-			for (i : 0 .. TABLE_SIZE) {
-				(pt.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
-			}
+			// int i;
+			// for (i : 0 .. TABLE_SIZE-1) {
+				
+			// }
+			int i = 0;
+			do
+			:: i < 10 -> (pt.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type; i++
+			:: else -> break
+			od
 			goto work;
 		}
 }
 
 proctype camera_node(){
+	printf("\n camera_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // say 0 is the topic on which I want to publish images
 	mtype msg_type = img;
@@ -95,7 +102,6 @@ proctype camera_node(){
 		do
 		:: nempty(negotiatechan[node_id]) -> goto negotiate_connection;
 		:: start_publishing == 1 -> topics[topic_id]!img;
-		:: 1 -> skip;
 		od	
 	
 	negotiate_connection:
@@ -110,6 +116,7 @@ proctype camera_node(){
 
 
 proctype image_segmentation_node(){
+	printf("\n image_segmentation_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // say 0 is the topic on which I want to publish images
 	mtype msg_type = img;
@@ -123,7 +130,6 @@ proctype image_segmentation_node(){
 		do
 		:: nempty(nodechan[_pid]) -> goto get_notification;
 		:: nempty(topics[topic_id]) -> topics[topic_id]?msg; goto do_computation;
-		:: 1 -> skip;
 		od
 
 	get_notification:
@@ -133,7 +139,7 @@ proctype image_segmentation_node(){
 			mtype p_msg_type = img;
 			mtype p_node_type = subscriber;
 			mtype prot;
-			nodechan[_pid]?node_id,topic_id,msg_type,node_type;
+			nodechan[_pid]?p_node_id,p_topic_id,p_msg_type,p_node_type;
 			//contact publisher
 			negotiatechan[p_node_id]!negotiate;
 			protocolchan[p_node_id]?prot;
