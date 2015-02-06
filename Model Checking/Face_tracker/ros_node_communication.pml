@@ -72,16 +72,22 @@ proctype master_node(){
 	notify_sub:
 		//notify subscribers for new publisher
 		atomic{
-			// int i;
-			// for (i : 0 .. TABLE_SIZE-1) {
-				
-			// }
 			int i = 0;
-			do
-			:: i < 10 -> (pt.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type; i++
-			:: else -> break
-			od
+			for (i : 0 .. st.last-1) {
+				(st.table[i].tid == topic_id) -> nodechan[st.table[i].nodeid]!node_id,topic_id,msg_type,node_type;
+			}
 			goto work;
+			// do
+			// :: i < st.last ->
+			// 	printf("st.table[i].nodeid  = %d\n", st.table[i].nodeid );
+			// 	printf("node_id = %d\n", node_id);
+			// 	if
+			// 	::(st.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
+			// 	::(st.table[i].nodeid != node_id) -> skip;
+			//     fi; 
+			//     i++;
+			// :: i >= st.last  -> goto work;
+			// od
 		}
 }
 
