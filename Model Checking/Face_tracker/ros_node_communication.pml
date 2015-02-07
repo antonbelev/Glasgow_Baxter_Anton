@@ -66,7 +66,7 @@ proctype master_node(){
 					st.table[st.last].nodeid = node_id;
 					st.table[st.last].tid = topic_id;
 					st.last = st.last + 1; 
-					goto work;
+					goto check_for_publishers;
 			fi
 		}
 	notify_sub:
@@ -77,17 +77,16 @@ proctype master_node(){
 				(st.table[i].tid == topic_id) -> nodechan[st.table[i].nodeid]!node_id,topic_id,msg_type,node_type;
 			}
 			goto work;
-			// do
-			// :: i < st.last ->
-			// 	printf("st.table[i].nodeid  = %d\n", st.table[i].nodeid );
-			// 	printf("node_id = %d\n", node_id);
-			// 	if
-			// 	::(st.table[i].nodeid == node_id) -> nodechan[node_id]!node_id,topic_id,msg_type,node_type;
-			// 	::(st.table[i].nodeid != node_id) -> skip;
-			//     fi; 
-			//     i++;
-			// :: i >= st.last  -> goto work;
-			// od
+		}
+
+	check_for_publishers:
+		//check if there are publishers on subscriber's topic
+		atomic{
+			int i = 0;
+			for (i : 0 .. pt.last-1) {
+				(pt.table[i].tid == topic_id) -> nodechan[node_id]!pt.table[i].nodeid,topic_id,msg_type,node_type;
+			}
+			goto work;
 		}
 }
 
