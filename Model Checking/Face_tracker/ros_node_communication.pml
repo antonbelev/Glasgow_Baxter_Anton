@@ -39,6 +39,9 @@ chan reg_with_master = [NODE_BANDWIDTH] of {int, int, mtype, mtype}
 pub_table pt;
 sub_table st;
 
+short subscriberNode =-1;
+short publisherNode =-1;
+
 proctype master_node(){
 	printf("\n masterid %d \n", _pid);
 	int node_id;
@@ -158,6 +161,12 @@ proctype image_segmentation_node(){
 
 init{
 	run master_node();
-	run image_segmentation_node();
-	run camera_node();
+	subscriberNode = run image_segmentation_node();
+	publisherNode = run camera_node();
 }
+
+#define nemptyImgTopic (nempty(topics[0]))
+#define imgTopicPoll (topics[0]?[img])
+#include "claim_image_channel_transmit_only_img"
+/*spin -f '<>(nemptyImgTopic && !imgTopicPoll)' > claim_image_channel_transmit_only_img 
+//always the Image topic is empty or mtype img is on the channel*/
