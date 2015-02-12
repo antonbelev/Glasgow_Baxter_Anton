@@ -1,7 +1,7 @@
-never  {    /* <>(nemptyImgTopic && !imgTopicPoll) */
+never  {    /* <>(p && !q) */
 T0_init:
 	do
-	:: atomic { ((nemptyImgTopic && !imgTopicPoll)) -> assert(!((nemptyImgTopic && !imgTopicPoll))) }
+	:: atomic { ((p && !q)) -> assert(!((p && !q))) }
 	:: (1) -> goto T0_init
 	od;
 accept_all:

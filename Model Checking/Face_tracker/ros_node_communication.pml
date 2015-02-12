@@ -165,8 +165,12 @@ init{
 	publisherNode = run camera_node();
 }
 
-#define nemptyImgTopic (nempty(topics[0]))
-#define imgTopicPoll (topics[0]?[img])
+#define p (nempty(topics[0])) //non-empty topic channel
+#define q (topics[0]?[img]) //poll topic channel for img mtype
+#define m (image_segmentation_node[subscriberNode]@work_segmentation_node) // test ltl - subscriber@work_segmentation_node label
+/*spin -f '<>(p && !q)' > claim_image_channel_transmit_only_img 
+//never topic channel is non-empty and the msg on the channel is different from img*/
 #include "claim_image_channel_transmit_only_img"
-/*spin -f '<>(nemptyImgTopic && !imgTopicPoll)' > claim_image_channel_transmit_only_img 
-//always the Image topic is empty or mtype img is on the channel*/
+/*spin -f '<>(p && !q)' > claim_image_channel_transmit_only_img*/
+#include "test_claim"
+
