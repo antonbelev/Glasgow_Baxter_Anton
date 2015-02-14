@@ -66,12 +66,12 @@ proctype master_node(){
 					pt.table[pt.last].tid = topic_id;
 					pt.last = pt.last + 1;
 					goto notify_sub;
-			:: node_type == subscriber ->
-					reg_sub:			
+			:: node_type == subscriber -> 	
+					reg_sub:	
 					st.table[st.last].nodeid = node_id;
 					st.table[st.last].tid = topic_id;
 					st.last = st.last + 1; 
-					goto check_for_publishers;
+					goto work;
 			fi
 		}
 	notify_sub:
@@ -80,16 +80,6 @@ proctype master_node(){
 			int i = 0;
 			for (i : 0 .. st.last-1) {
 				(st.table[i].tid == topic_id) -> nodechan[st.table[i].nodeid]!node_id,topic_id,msg_type,node_type;
-			}
-			goto work;
-		}
-
-	check_for_publishers:
-		//check if there are publishers on subscriber's topic
-		atomic{
-			int i = 0;
-			for (i : 0 .. pt.last-1) {
-				(pt.table[i].tid == topic_id) -> nodechan[node_id]!pt.table[i].nodeid,topic_id,msg_type,node_type;
 			}
 			goto work;
 		}
@@ -167,21 +157,13 @@ init{
 	publisherNode = run camera_node();
 }
 
+
 #define p (nempty(topics[0])) //non-empty topic channel
 #define q (topics[0]?[img]) //poll topic channel for img mtype
 /*spin -f '<>(p && !q)' > claim_image_channel_transmit_only_img 
 //never topic channel is non-empty and the msg on the channel is different from img*/
 #include "claim_image_channel_transmit_only_img"
 
-
-//#define m (image_segmentation_node[subscriberNode]@work_segmentation_node) // test ltl - subscriber@work_segmentation_node label
-/*spin -f '<>m' > test_claim*/
-//#include "test_claim"
-
-
-#define a (camera_node[publisherNode]@register_with_master))
-#define b (image_segmentation_node[subscriberNode]@register_with_master))
 #define c (camera_node[publisherNode]:start_publishing == 0)
 /*spin -f '[]c' > no_eventually_connection*/
 #include "no_eventually_connection"
-
