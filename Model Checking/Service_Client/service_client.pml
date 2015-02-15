@@ -5,10 +5,11 @@
 
 mtype = {service, client, request, response, failed, succeeded, protocol, negotiate}
 
-chan nodechan[MAX_NODES] = [NODE_BANDWIDTH] of {int, int, mtype, mtype};
+chan nodechan[MAX_NODES] = [NODE_BANDWIDTH] of {int, int, mtype};
 chan services[TABLE_SIZE] = [SERVICE_BANDWIDTH] of {mtype, mtype}
 int service_table[TABLE_SIZE]; //service_table[i] = k -> k is the nodeid of the service provider for the i-th service
 								//this means that the last node to register as a service provider will be the official provider
+int client_table[TABLE_SIZE]; //client_table[i] = k -> k is the nodeid of the client to service i
 chan negotiatechan[MAX_NODES] = [0] of {mtype}; //used to send start negotiation
 
 //{1, 3, client} - node 1, is a client to service 3 
@@ -36,20 +37,18 @@ proctype master_node(){
 			:: node_type == service -> 
 					reg_service:
 					service_table[service_id] = node_id;
-					goto work;
+					if
+					:: (client_table[service_id] != 0) -> nodechan[client_table[service_id]]!node_id,service_id,service; goto work;
+					:: (client_table[service_id] == 0) -> goto work;
+					fi
 			:: node_type == client -> 	
 					reg_client:
-					goto look_up;
+					client_table[service_id] = node_id;
+					if
+					:: (service_table[service_id] != 0) -> nodechan[node_id]!service_table[service_id],service_id,service; goto work;
+					:: (service_table[service_id] == 0) -> goto work;
+					fi	
 			fi
-		}
-	look_up:
-		atomic{
-			//use the service ID as an assert that the client gets the node id of the 
-			//correct service provider
-			if
-			:: (service_table[service_id] != 0) -> nodechan[node_id]!service_table[service_id],service_id,service;
-			fi
-			goto work;
 		}
 }
 
