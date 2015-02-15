@@ -47,7 +47,7 @@ proctype master_node(){
 			//use the service ID as an assert that the client gets the node id of the 
 			//correct service provider
 			if
-			:: (service_table[service_id] != 0) -> nodechan[node_id]!service_table[service_id],service_id,node_type;
+			:: (service_table[service_id] != 0) -> nodechan[node_id]!service_table[service_id],service_id,service;
 			fi
 			goto work;
 		}
@@ -55,6 +55,31 @@ proctype master_node(){
 
 proctype service_node(){
 	printf("\n service id %d \n", _pid);
+	int node_id = _pid;
+	int service_id = 0; // say I want to use service 0
+	mtype node_type = service;
+	mtype req;//request type
+	mtype outcome;//failed or succeeded - assert!
+	mtype n;
+
+	register_service:
+		reg_with_master!node_id,service_id,node_type;
+
+	work_service:
+		negotiatechan[node_id]?n;
+		assert(n == negotiate);
+		negotiatechan[node_id]!protocol;
+		goto service_request;
+
+	service_request:
+		services[service_id]?req,outcome;
+		assert(req == request)
+		assert(outcome == succeeded)
+		if
+		:: 1 -> services[service_id]!response,failed;
+		:: 1 -> services[service_id]!response,succeeded;
+		fi
+		goto work_service;
 }
 
 proctype client_node(){
@@ -65,7 +90,7 @@ proctype client_node(){
 	mtype resp;//response type
 	mtype outcome;//failed or succeeded - assert!
 
-	register_with_master:
+	register_client:
 		reg_with_master!node_id,service_id,node_type;
 
 	work_client:
@@ -77,9 +102,10 @@ proctype client_node(){
 		atomic{
 			int s_node_id;
 			int s_service_id;
-			mtype s_node_type = subscriber;
+			mtype s_node_type;
 			mtype prot;
 			nodechan[_pid]?s_node_id,s_service_id,s_node_type;
+			assert(s_node_type == service)
 			//contact service
 			negotiatechan[s_node_id]!negotiate;
 			negotiatechan[s_node_id]?prot;
@@ -87,14 +113,15 @@ proctype client_node(){
 			services[s_service_id]!request,succeeded;
 			services[s_service_id]?resp,outcome;
 			assert(resp == response)
+			assert(outcome == failed || outcome == succeeded)
 			if
-			::outcome == failed -> goto register_with_master;
+			::outcome == failed -> goto register_client;
+			::outcome == succeeded -> goto do_computation;
 			fi
-			goto do_computation;
 		}
 
 	do_computation:
-		goto register_with_master;
+		goto register_client;
 }
 
 init{
