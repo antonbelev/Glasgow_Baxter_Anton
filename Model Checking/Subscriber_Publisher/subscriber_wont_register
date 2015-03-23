@@ -1,0 +1,7 @@
+never  {    /* !<>subAtReg */
+accept_init:
+T0_init:
+	do
+	:: (! ((subAtReg))) -> goto T0_init
+	od;
+}

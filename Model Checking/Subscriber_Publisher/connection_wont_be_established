@@ -1,0 +1,7 @@
+never  {    /* []c */
+accept_init:
+T0_init:
+	do
+	:: ((c)) -> goto T0_init
+	od;
+}

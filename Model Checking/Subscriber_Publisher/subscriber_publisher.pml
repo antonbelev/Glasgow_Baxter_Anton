@@ -51,7 +51,7 @@ proctype master_node(){
 
 	work:
 		do
-		:: nempty(reg_with_master) -> goto register_node;
+		:: atomic{nempty(reg_with_master) -> goto register_node;}
 		od
 
 	register_node:
@@ -110,8 +110,8 @@ proctype camera_node(){
 
 	work_camera_node:
 		do
-		:: nempty(negotiatechan[node_id]) -> goto negotiate_connection;
-		:: start_publishing == 1 -> topics[topic_id]!img;
+		:: atomic{nempty(negotiatechan[node_id]) -> goto negotiate_connection;}
+		:: atomic{start_publishing == 1 -> topics[topic_id]!img;}
 		od	
 	
 	negotiate_connection:
@@ -128,7 +128,7 @@ proctype camera_node(){
 proctype image_segmentation_node(){
 	printf("\n image_segmentation_node %d \n", _pid);
 	int node_id = _pid;
-	int topic_id = 0; // say 0 is the topic on which I want to publish images
+	int topic_id = 0; // 0 is the topic from with I can get images back
 	mtype msg_type = img;
 	mtype node_type = subscriber;
 	mtype msg;
@@ -138,8 +138,8 @@ proctype image_segmentation_node(){
 
 	work_segmentation_node:
 		do
-		:: nempty(nodechan[_pid]) -> goto get_notification;
-		:: nempty(topics[topic_id]) -> topics[topic_id]?msg; goto do_computation;
+		:: atomic{nempty(nodechan[_pid]) -> goto get_notification;}
+		:: atomic{nempty(topics[topic_id]) -> topics[topic_id]?msg; goto do_computation;}
 		od
 
 	get_notification:
@@ -167,21 +167,31 @@ init{
 	publisherNode = run camera_node();
 }
 
+/* 
+ * Safery property - not allowed message types are never published on image topic
+ */
 #define p (nempty(topics[0])) //non-empty topic channel
 #define q (topics[0]?[img]) //poll topic channel for img mtype
-/*spin -f '<>(p && !q)' > claim_image_channel_transmit_only_img 
-//never topic channel is non-empty and the msg on the channel is different from img*/
-#include "claim_image_channel_transmit_only_img"
+/*spin -f '<>(p && !q)' > images_topic_transmits_non_image_msg*/
+#include "images_topic_transmits_non_image_msg"
 
-
-//#define m (image_segmentation_node[subscriberNode]@work_segmentation_node) // test ltl - subscriber@work_segmentation_node label
-/*spin -f '<>m' > test_claim*/
-//#include "test_claim"
-
-
-#define a (camera_node[publisherNode]@register_with_master))
-#define b (image_segmentation_node[subscriberNode]@register_with_master))
+/* 
+ * Liveness property - eventually a connection between the publisher and the subsriber will be established
+ */
 #define c (camera_node[publisherNode]:start_publishing == 0)
-/*spin -f '[]c' > no_eventually_connection*/
-#include "no_eventually_connection"
+/*spin -f '[]c' > connection_wont_be_established*/
+#include "connection_wont_be_established"
 
+/* 
+ * Liveness property - eventually the publisher will send registration request
+ */
+#define pubAtReg (camera_node[publisherNode]@register_with_master))
+/*spin -f '!<>pubAtReg' > publisher_wont_register*/
+#include "publisher_wont_register"
+
+/* 
+ * Liveness property - eventually the publisher will send registration request
+ */
+ #define subAtReg (image_segmentation_node[subscriberNode]@register_with_master))
+/*spin -f '!<>subAtReg' > subscriber_wont_register*/
+ #include "subscriber_wont_register"

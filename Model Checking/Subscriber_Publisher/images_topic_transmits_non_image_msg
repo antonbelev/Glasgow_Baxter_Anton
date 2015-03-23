@@ -1,0 +1,9 @@
+never  {    /* <>(p && !q) */
+T0_init:
+	do
+	:: atomic { ((p && !q)) -> assert(!((p && !q))) }
+	:: (1) -> goto T0_init
+	od;
+accept_all:
+	skip
+}

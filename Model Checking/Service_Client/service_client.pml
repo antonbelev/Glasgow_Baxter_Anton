@@ -10,7 +10,7 @@ chan services[TABLE_SIZE] = [SERVICE_BANDWIDTH] of {mtype, mtype}
 int service_table[TABLE_SIZE]; //service_table[i] = k -> k is the nodeid of the service provider for the i-th service
 								//this means that the last node to register as a service provider will be the official provider
 int client_table[TABLE_SIZE]; //client_table[i] = k -> k is the nodeid of the client to service i
-chan negotiatechan[MAX_NODES] = [0] of {mtype}; //used to send start negotiation
+chan negotiatechan[MAX_NODES] = [SERVICE_BANDWIDTH] of {mtype}; //used to send start negotiation
 
 //{1, 3, client} - node 1, is a client to service 3 
 //The Master has a well-known XMLRPC URI that is accessible to all nodes.
@@ -26,7 +26,7 @@ proctype master_node(){
 
 	work:
 		do
-		:: nempty(reg_with_master) -> goto register_node;
+		:: atomic{nempty(reg_with_master) -> goto register_node;}
 		od
 
 	register_node:
@@ -94,7 +94,7 @@ proctype client_node(){
 
 	work_client:
 		do
-		:: nempty(nodechan[_pid]) -> goto get_lookup;
+		:: atomic{nempty(nodechan[_pid]) -> goto get_lookup;}
 		od
 
 	get_lookup:

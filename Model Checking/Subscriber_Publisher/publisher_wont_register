@@ -1,0 +1,7 @@
+never  {    /* !<>pubAtReg */
+accept_init:
+T0_init:
+	do
+	:: (! ((pubAtReg))) -> goto T0_init
+	od;
+}
