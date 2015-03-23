@@ -1,0 +1,7 @@
+never  {    /* !<>clientAtReg */
+accept_init:
+T0_init:
+	do
+	:: (! ((clientAtReg))) -> goto T0_init
+	od;
+}

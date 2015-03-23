@@ -37,10 +37,11 @@ proctype master_node(){
 			:: node_type == service -> 
 					reg_service:
 					service_table[service_id] = node_id;
-					if
-					:: (client_table[service_id] != 0) -> nodechan[client_table[service_id]]!node_id,service_id,service; goto work;
-					:: (client_table[service_id] == 0) -> goto work;
-					fi
+					goto work;
+					// if
+					// :: (client_table[service_id] != 0) -> nodechan[client_table[service_id]]!node_id,service_id,service; goto work;
+					// :: (client_table[service_id] == 0) -> goto work;
+					// fi
 			:: node_type == client -> 	
 					reg_client:
 					client_table[service_id] = node_id;
@@ -86,8 +87,8 @@ proctype client_node(){
 	int node_id = _pid;
 	int service_id = 0; // say I want to use service 0
 	mtype node_type = client;
-	mtype resp;//response type
-	mtype outcome;//failed or succeeded - assert!
+	mtype resp;// response type
+	mtype outcome;// failed or succeeded
 
 	register_client:
 		reg_with_master!node_id,service_id,node_type;
@@ -95,6 +96,7 @@ proctype client_node(){
 	work_client:
 		do
 		:: atomic{nempty(nodechan[_pid]) -> goto get_lookup;}
+		:: atomic{empty(nodechan[_pid]) -> goto register_client;}
 		od
 
 	get_lookup:
@@ -129,3 +131,24 @@ init{
 	cid = run client_node();
 }
 
+
+/* 
+ * Liveness property - eventually the service provider will send registration request
+ */
+#define servAtReg (service_node[sid]@register_service))
+/*spin -f '!<>servAtReg' > service_provider_wont_register*/
+#include "service_provider_wont_register"
+
+/* 
+ * Liveness property - eventually the client will send registration request
+ */
+ #define clientAtReg (client_node[cid]@register_client))
+/*spin -f '!<>clientAtReg' > client_wont_register*/
+ #include "client_wont_register"
+
+ /*
+  * Liveness property - eventually client will get a successful resonse
+  */
+  #define r (client_node[cid]:resp == succeeded)
+  /*spin -f '!<>r' > response_always_fails*/
+  #include "response_always_fails"
