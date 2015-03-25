@@ -38,10 +38,6 @@ proctype master_node(){
 					reg_service:
 					service_table[service_id] = node_id;
 					goto work;
-					// if
-					// :: (client_table[service_id] != 0) -> nodechan[client_table[service_id]]!node_id,service_id,service; goto work;
-					// :: (client_table[service_id] == 0) -> goto work;
-					// fi
 			:: node_type == client -> 	
 					reg_client:
 					client_table[service_id] = node_id;
@@ -90,13 +86,13 @@ proctype client_node(){
 	mtype resp;// response type
 	mtype outcome;// failed or succeeded
 
-	register_client:
+	poll_master:
 		reg_with_master!node_id,service_id,node_type;
 
 	work_client:
 		do
 		:: atomic{nempty(nodechan[_pid]) -> goto get_lookup;}
-		:: atomic{empty(nodechan[_pid]) -> goto register_client;}
+		:: atomic{empty(nodechan[_pid]) -> goto poll_master;} // wait for service
 		od
 
 	get_lookup:
@@ -116,13 +112,13 @@ proctype client_node(){
 			assert(resp == response)
 			assert(outcome == failed || outcome == succeeded)
 			if
-			::outcome == failed -> goto register_client;
+			::outcome == failed -> goto poll_master;
 			::outcome == succeeded -> goto do_computation;
 			fi
 		}
 
 	do_computation:
-		goto register_client;
+		goto poll_master;
 }
 
 init{
@@ -137,18 +133,18 @@ init{
  */
 #define servAtReg (service_node[sid]@register_service))
 /*spin -f '!<>servAtReg' > service_provider_wont_register*/
-#include "service_provider_wont_register"
+//#include "service_provider_wont_register"
 
 /* 
  * Liveness property - eventually the client will send registration request
  */
- #define clientAtReg (client_node[cid]@register_client))
+ #define clientAtReg (client_node[cid]@poll_master))
 /*spin -f '!<>clientAtReg' > client_wont_register*/
- #include "client_wont_register"
+ //#include "client_wont_register"
 
  /*
   * Liveness property - eventually client will get a successful resonse
   */
   #define r (client_node[cid]:resp == succeeded)
   /*spin -f '!<>r' > response_always_fails*/
-  #include "response_always_fails"
+  //#include "response_always_fails"

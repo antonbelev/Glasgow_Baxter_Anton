@@ -1,7 +1,7 @@
-#define	TABLE_SIZE 10
+#define	TABLE_SIZE 15
 #define TOPIC_BANDWIDTH 1
 #define NODE_BANDWIDTH 1
-#define MAX_NODES 10
+#define MAX_NODES 15
 
 mtype = {img, string, integer, protocol, negotiate, subscriber, publisher}
 
@@ -42,7 +42,7 @@ sub_table st;
 short subscriberNode =-1;
 short publisherNode =-1;
 
-proctype master_node(){
+active proctype master_node(){
 	printf("\n masterid %d \n", _pid);
 	int node_id;
 	int topic_id;
@@ -95,7 +95,7 @@ proctype master_node(){
 		}
 }
 
-proctype camera_node(){
+active [2] proctype camera_node(){
 	printf("\n camera_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // say 0 is the topic on which I want to publish images
@@ -125,7 +125,7 @@ proctype camera_node(){
 }
 
 
-proctype image_segmentation_node(){
+active [2] proctype image_segmentation_node(){
 	printf("\n image_segmentation_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // 0 is the topic from with I can get images back
@@ -161,37 +161,31 @@ proctype image_segmentation_node(){
 		goto work_segmentation_node;
 }
 
-init{
-	run master_node();
-	subscriberNode = run image_segmentation_node();
-	publisherNode = run camera_node();
-}
-
 /* 
  * Safery property - not allowed message types are never published on image topic
  */
 #define p (nempty(topics[0])) //non-empty topic channel
 #define q (topics[0]?[img]) //poll topic channel for img mtype
 /*spin -f '<>(p && !q)' > images_topic_transmits_non_image_msg*/
-#include "images_topic_transmits_non_image_msg"
+//#include "images_topic_transmits_non_image_msg"
 
 /* 
  * Liveness property - eventually a connection between the publisher and the subsriber will be established
  */
-#define c (camera_node[publisherNode]:start_publishing == 0)
+#define c (camera_node:start_publishing == 0)
 /*spin -f '[]c' > connection_wont_be_established*/
 #include "connection_wont_be_established"
 
 /* 
  * Liveness property - eventually the publisher will send registration request
  */
-#define pubAtReg (camera_node[publisherNode]@register_with_master))
+//#define pubAtReg (camera_node[publisherNode]@register_with_master))
 /*spin -f '!<>pubAtReg' > publisher_wont_register*/
-#include "publisher_wont_register"
+//#include "publisher_wont_register"
 
 /* 
  * Liveness property - eventually the publisher will send registration request
  */
- #define subAtReg (image_segmentation_node[subscriberNode]@register_with_master))
+ //#define subAtReg (image_segmentation_node[subscriberNode]@register_with_master))
 /*spin -f '!<>subAtReg' > subscriber_wont_register*/
-#include "subscriber_wont_register"
+ //#include "subscriber_wont_register"
