@@ -1,7 +1,9 @@
-#define	TABLE_SIZE 15
+#define	TABLE_SIZE 14
 #define TOPIC_BANDWIDTH 1
 #define NODE_BANDWIDTH 1
-#define MAX_NODES 15
+#define MAX_NODES 14
+#define NUMBER_OF_PUBLISHERS 5
+#define NUMBER_OF_SUBSCRIBERS 5
 
 mtype = {img, string, integer, protocol, negotiate, subscriber, publisher}
 
@@ -41,6 +43,7 @@ sub_table st;
 
 short subscriberNode =-1;
 short publisherNode =-1;
+
 
 active proctype master_node(){
 	printf("\n masterid %d \n", _pid);
@@ -95,7 +98,7 @@ active proctype master_node(){
 		}
 }
 
-active [2] proctype camera_node(){
+active [NUMBER_OF_PUBLISHERS] proctype camera_node(){
 	printf("\n camera_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // say 0 is the topic on which I want to publish images
@@ -125,7 +128,7 @@ active [2] proctype camera_node(){
 }
 
 
-active [2] proctype image_segmentation_node(){
+active [NUMBER_OF_SUBSCRIBERS] proctype image_segmentation_node(){
 	printf("\n image_segmentation_node %d \n", _pid);
 	int node_id = _pid;
 	int topic_id = 0; // 0 is the topic from with I can get images back

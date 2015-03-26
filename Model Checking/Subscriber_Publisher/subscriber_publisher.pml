@@ -185,13 +185,13 @@ init{
 /* 
  * Liveness property - eventually the publisher will send registration request
  */
-#define pubAtReg (camera_node[publisherNode]@register_with_master))
+#define pubAtReg (camera_node[publisherNode]@register_with_master)
 /*spin -f '!<>pubAtReg' > publisher_wont_register*/
 #include "publisher_wont_register"
 
 /* 
  * Liveness property - eventually the publisher will send registration request
  */
- #define subAtReg (image_segmentation_node[subscriberNode]@register_with_master))
+ #define subAtReg (image_segmentation_node[subscriberNode]@register_with_master)
 /*spin -f '!<>subAtReg' > subscriber_wont_register*/
 #include "subscriber_wont_register"

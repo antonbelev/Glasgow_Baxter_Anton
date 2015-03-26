@@ -1,7 +1,9 @@
-#define	TABLE_SIZE 10
+#define	TABLE_SIZE 20
 #define SERVICE_BANDWIDTH 0
 #define NODE_BANDWIDTH 1
-#define MAX_NODES 10
+#define MAX_NODES 20
+#define NUMBER_OF_SERVICE_PROVIDERS 7
+#define NUMBER_OF_CLIENTS 7
 
 mtype = {service, client, request, response, failed, succeeded, protocol, negotiate}
 
@@ -9,16 +11,14 @@ chan nodechan[MAX_NODES] = [NODE_BANDWIDTH] of {int, int, mtype};
 chan services[TABLE_SIZE] = [SERVICE_BANDWIDTH] of {mtype, mtype}
 int service_table[TABLE_SIZE]; //service_table[i] = k -> k is the nodeid of the service provider for the i-th service
 								//this means that the last node to register as a service provider will be the official provider
-
+int client_table[TABLE_SIZE]; //client_table[i] = k -> k is the nodeid of the client to service i
 chan negotiatechan[MAX_NODES] = [SERVICE_BANDWIDTH] of {mtype}; //used to send start negotiation
 
 //{1, 3, client} - node 1, is a client to service 3 
 //The Master has a well-known XMLRPC URI that is accessible to all nodes.
 chan reg_with_master = [NODE_BANDWIDTH] of {int, int, mtype}
-short sid =-1;
-short cid =-1;
 
-proctype master_node(){
+active proctype master_node(){
 	printf("\n master id %d \n", _pid);
 	int node_id;
 	int service_id;
@@ -38,7 +38,9 @@ proctype master_node(){
 					reg_service:
 					service_table[service_id] = node_id;
 					goto work;
-			:: node_type == client -> 
+			:: node_type == client -> 	
+					reg_client:
+					client_table[service_id] = node_id;
 					if
 					:: (service_table[service_id] != 0) -> nodechan[node_id]!service_table[service_id],service_id,service; goto work;
 					:: (service_table[service_id] == 0) -> goto work;
@@ -47,7 +49,7 @@ proctype master_node(){
 		}
 }
 
-proctype service_node(){
+active [NUMBER_OF_SERVICE_PROVIDERS] proctype service_node(){
 	printf("\n service id %d \n", _pid);
 	int node_id = _pid;
 	int service_id = 0; // say I want to use service 0
@@ -76,13 +78,13 @@ proctype service_node(){
 		goto work_service;
 }
 
-proctype client_node(){
+active [NUMBER_OF_CLIENTS] proctype client_node(){
 	printf("\n client id %d \n", _pid);
 	int node_id = _pid;
 	int service_id = 0; // say I want to use service 0
 	mtype node_type = client;
-	mtype resp = response;// response type
-	mtype outcome = failed;// failed or succeeded
+	mtype resp;// response type
+	mtype outcome;// failed or succeeded
 
 	poll_master:
 		reg_with_master!node_id,service_id,node_type;
@@ -118,32 +120,3 @@ proctype client_node(){
 	do_computation:
 		goto poll_master;
 }
-
-init{
-	run master_node();
-	sid = run service_node();
-	cid = run client_node();
-}
-
-
-/* 
- * Liveness property - eventually the service provider will send registration request
- */
-#define servAtReg (service_node[sid]@register_service))
-/*spin -f '!<>servAtReg' > service_provider_wont_register*/
-#include "service_provider_wont_register"
-
-/* 
- * Liveness property - eventually the client will send registration request
- */
- #define clientAtReg (client_node[cid]@poll_master)
-/*spin -f '!<>clientAtReg' > client_wont_register*/
- #include "client_wont_register"
-
- /*
-  * Liveness property - eventually client will get a successful response
-  */
-  #define r (client_node[cid]:resp == response)
-  #define p (client_node[cid]:outcome == failed)
-  /*spin -f '[](r && p)' > response_always_fails*/
-  #include "response_always_fails"

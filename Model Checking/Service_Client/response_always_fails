@@ -1,7 +1,7 @@
-never  {    /* !<>r */
+never  {    /* [](r && p) */
 accept_init:
 T0_init:
 	do
-	:: (! ((r))) -> goto T0_init
+	:: ((r && p)) -> goto T0_init
 	od;
 }
